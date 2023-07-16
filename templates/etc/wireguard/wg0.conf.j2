@@ -1,0 +1,12 @@
+[Interface]
+PrivateKey = {{ _privkey_value.content | b64decode }}
+Address = {{ wireguard_address }}
+ListenPort = {{ wireguard_listen_port }}
+Table = off
+SaveConfig = true
+
+[Peer]
+# Workstation public key
+PublicKey = {{ _peer_pubkey_value.content | b64decode }}
+# VPN client's IP address in the VPN
+AllowedIPs = {{ peer_address }}/32

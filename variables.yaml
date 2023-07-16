@@ -1,0 +1,17 @@
+---
+wireguard_dir: /etc/wireguard
+
+wireguard_privatekey_path: "{{ wireguard_dir }}/privatekey"
+wireguard_publickey_path: "{{ wireguard_dir }}/publickey"
+
+wireguard_listen_port: 51820
+wireguard_network: 192.168.240.0/24
+wireguard_address: 192.168.240.1/24
+
+# peer
+peer_privatekey_path: "{{ wireguard_dir }}/peerprivatekey"
+peer_publickey_path: "{{ wireguard_dir }}/peerpublickey"
+peer_address: 192.168.240.2
+
+# fetch dir
+fetch_dir: fetchedfiles

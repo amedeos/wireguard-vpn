@@ -1,2 +1,6 @@
 *.swp
 hosts
+hosts-aws
+*.pem
+fetchedfiles/*
+routing.sh

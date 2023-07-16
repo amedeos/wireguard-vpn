@@ -1,0 +1,7 @@
+- import_playbook: server.yaml
+  tags:
+    - server
+
+- import_playbook: client.yaml
+  tags:
+    - client

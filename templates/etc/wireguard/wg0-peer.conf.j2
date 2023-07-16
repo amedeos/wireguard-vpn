@@ -1,0 +1,9 @@
+[Interface]
+PrivateKey = {{ _peer_privkey_value.content | b64decode }}
+Address = {{ peer_address }}/24
+
+[Peer]
+PublicKey = {{ _pubkey_value.content | b64decode }}
+#AllowedIPs = {{ wireguard_network }}
+AllowedIPs = 0.0.0.0/0
+Endpoint = {{ ansible_ssh_host }}:{{ wireguard_listen_port }}

@@ -1,0 +1,220 @@
+- name: Setup wireguard server
+  hosts: all
+  become: true
+  vars_files:
+    - variables.yaml
+    - vault-variables.yaml
+  tasks:
+  - name: Install wireguard
+    ansible.builtin.package:
+      name: wireguard-tools
+      state: present
+
+  - name: Enable WireGuard kernel module
+    community.general.modprobe:
+      name: wireguard
+      state: present
+    register: wireguard_module_enabled
+    until: wireguard_module_enabled is succeeded
+    retries: 10
+    delay: 10
+    failed_when: wireguard_module_enabled is failure
+
+  - name: Wireguard Server keys
+    block:
+    - name: Test if private key is already present
+      ansible.builtin.stat:
+        path: "{{ wireguard_privatekey_path }}"
+      register: _priv_key
+  
+    - name: Generate WireGuard private and public keys
+      ansible.builtin.shell: |
+        set -o pipefail
+        umask 077 && wg genkey | tee {{ wireguard_privatekey_path }} | wg pubkey > {{ wireguard_publickey_path }}
+      args:
+        executable: /bin/bash
+      when:
+        - not _priv_key.stat.exists
+  
+    - name: Read publickey
+      ansible.builtin.slurp:
+        src: "{{ wireguard_publickey_path }}"
+      register: _pubkey_value
+    
+    - name: Read privatekey
+      ansible.builtin.slurp:
+        src: "{{ wireguard_privatekey_path }}"
+      register: _privkey_value
+
+  - name: Wireguard Peer keys
+    block:
+    - name: Test if peer private key is already present
+      ansible.builtin.stat:
+        path: "{{ peer_privatekey_path }}"
+      register: _peer_priv_key
+  
+    - name: Generate WireGuard peer private and public keys
+      ansible.builtin.shell: |
+        set -o pipefail
+        umask 077 && wg genkey | tee {{ peer_privatekey_path }} | wg pubkey > {{ peer_publickey_path }}
+      args:
+        executable: /bin/bash
+      when:
+        - not _peer_priv_key.stat.exists
+  
+    - name: Read Peer publickey
+      ansible.builtin.slurp:
+        src: "{{ peer_publickey_path }}"
+      register: _peer_pubkey_value
+  
+    - name: Read Peer privatekey
+      ansible.builtin.slurp:
+        src: "{{ peer_privatekey_path }}"
+      register: _peer_privkey_value
+
+  - name: Configure wg0.conf
+    ansible.builtin.template:
+      src: etc/wireguard/wg0.conf.j2
+      dest: /etc/wireguard/wg0.conf
+      owner: root
+      group: root
+      mode: '0600'
+
+  - name: Setting Kernel parameters
+    ansible.builtin.copy:
+      dest: /etc/sysctl.d/99-wireguard.conf
+      content: |
+        net.ipv4.ip_forward=1
+        net.ipv4.conf.default.rp_filter = 0
+        net.ipv4.conf.all.rp_filter = 0
+        net.ipv6.conf.all.forwarding=1
+
+  - name: restart sysctl
+    ansible.builtin.systemd:
+      name: systemd-sysctl.service
+      state: restarted
+
+  - name: Disable firewalld
+    ansible.builtin.systemd:
+      name: firewalld
+      state: stopped
+      enabled: False
+    ignore_errors: true
+
+  - name: Install iptables
+    ansible.builtin.package:
+      name: iptables-services
+      state: present
+
+  - name: iptables flush filter
+    ansible.builtin.iptables:
+      chain: "{{ item }}"
+      flush: yes
+    with_items:
+      - 'INPUT'
+      - 'FORWARD'
+      - 'OUTPUT'
+
+  - name: iptables flush nat
+    ansible.builtin.iptables:
+      table: nat
+      chain: '{{ item }}'
+      flush: yes
+    with_items:
+      - 'INPUT'
+      - 'OUTPUT'
+      - 'PREROUTING'
+      - 'POSTROUTING'
+
+  - name: iptables flush mangle
+    ansible.builtin.iptables:
+      table: mangle
+      chain: '{{ item }}'
+      flush: yes
+    with_items:
+      - 'INPUT'
+      - 'OUTPUT'
+      - 'PREROUTING'
+      - 'POSTROUTING'
+
+  - name: Allow related and established connections
+    ansible.builtin.iptables:
+      chain: INPUT
+      ctstate: ESTABLISHED,RELATED
+      jump: ACCEPT
+
+  - name: Allow new incoming SYN packets on TCP port 22 (SSH).
+    ansible.builtin.iptables:
+      chain: INPUT
+      protocol: tcp
+      destination_port: 22
+      ctstate: NEW
+      syn: match
+      jump: ACCEPT
+      comment: Accept new SSH connections.
+
+  - name: enable traffic from loopback
+    ansible.builtin.iptables:
+      chain: INPUT
+      in_interface: lo
+      jump: ACCEPT
+
+  - name: enable icmp
+    ansible.builtin.iptables:
+      chain: INPUT
+      protocol: icmp
+      jump: ACCEPT
+      comment: Accept icmp.
+
+  - name: Allow UDP wireguard_listen_port
+    ansible.builtin.iptables:
+      chain: INPUT
+      protocol: udp
+      destination_port: "{{ wireguard_listen_port }}"
+      jump: ACCEPT
+      comment: Accept wireguard connections.
+
+  - name: Set the last rule as REJECT for INPUT
+    ansible.builtin.iptables:
+      chain: INPUT
+      jump: REJECT
+
+  - name: enable source forward
+    ansible.builtin.iptables:
+      chain: FORWARD
+      source: "{{ wireguard_network }}"
+      jump: ACCEPT
+
+  - name: enable destination forward
+    ansible.builtin.iptables:
+      chain: FORWARD
+      destination: "{{ wireguard_network }}"
+      jump: ACCEPT
+
+  - name: enable MASQUERADING
+    ansible.builtin.iptables:
+      table: nat
+      chain: POSTROUTING
+      source: "{{ wireguard_network }}"
+      jump: MASQUERADE
+
+  - name: Set the last rule as REJECT for FORWARD
+    ansible.builtin.iptables:
+      chain: FORWARD
+      jump: REJECT
+
+  - name: save iptables configuration
+    ansible.builtin.shell: |
+      /usr/sbin/iptables-save > /etc/sysconfig/iptables
+
+  - name: Enable iptable service
+    ansible.builtin.systemd:
+      name: iptables.service
+      state: started
+      enabled: true
+
+  - name: Enable wg-quick service
+    ansible.builtin.systemd:
+      name: wg-quick@wg0.service
+      state: started
+      enabled: true

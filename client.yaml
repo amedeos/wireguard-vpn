@@ -1,0 +1,27 @@
+- name: Setup wireguard client files
+  hosts: all
+  become: true
+  vars_files:
+    - variables.yaml
+    - vault-variables.yaml
+  tasks:
+  - name: Configure wg0-peer.conf
+    ansible.builtin.template:
+      src: etc/wireguard/wg0-peer.conf.j2
+      dest: /root/wg0.conf
+      owner: root
+      group: root
+      mode: '0600'
+
+  - name: Download server private key
+    ansible.builtin.fetch:
+      src: "{{ item }}"
+      dest: "{{ fetch_dir }}/"
+      flat: true
+    loop:
+      - "{{ wireguard_privatekey_path }}"
+      - "{{ wireguard_publickey_path }}"
+      - "{{ peer_privatekey_path }}"
+      - "{{ peer_publickey_path }}"
+      - "/root/wg0.conf"
+
