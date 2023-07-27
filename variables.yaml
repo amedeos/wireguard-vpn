@@ -17,6 +17,8 @@ peer_address: 192.168.240.2
 fetch_dir: fetchedfiles
 
 # aws vars
+# set aws_provision to true if you want to create an instance on aws
+aws_provision: true
 aws_access_key: <your aws access key>
 aws_secret_key: <you aws secret key>
 aws_key_name: <your aws ssh key>

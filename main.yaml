@@ -1,3 +1,9 @@
+- import_playbook: provision-aws-ec2.yaml
+  tags:
+    - provision-aws
+  when:
+    - aws_provision|bool
+
 - import_playbook: server.yaml
   tags:
     - server
