@@ -1,5 +1,6 @@
 - name: Setup wireguard client files
-  hosts: all
+  hosts:
+    - wireguard
   become: true
   vars_files:
     - variables.yaml
