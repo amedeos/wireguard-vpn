@@ -111,10 +111,6 @@
         instance-state-name: [ "running"]
     register: wg_ec2_info
 
-  - name: Print instance information
-    debug:
-      var: wg_ec2_info
-
   - name: Write commodity hosts-aws file
     copy:
       dest: hosts-aws
