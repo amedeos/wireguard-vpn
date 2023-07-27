@@ -24,7 +24,31 @@
       region: "{{ aws_region }}"
       vpc_id: "{{ vpc.vpc.id }}"
       state: present
+      map_public: yes
     register: subnet
+
+  - name: Create IGW
+    amazon.aws.ec2_vpc_igw:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ aws_region }}"
+      vpc_id: "{{ vpc.vpc.id }}"
+      state: present
+    register: igw
+
+  - name: Route IGW
+    amazon.aws.ec2_vpc_route_table:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ aws_region }}"
+      vpc_id: "{{ vpc.vpc.id }}"
+      tags:
+        Name: Public
+      subnets:
+        - "{{ subnet.subnet.id }}"
+      routes:
+        - dest: 0.0.0.0/0
+          gateway_id: "{{ igw.gateway_id  }}"
 
   - name: Create {{ aws_sg_name }} Security Group
     amazon.aws.ec2_security_group:
@@ -47,6 +71,16 @@
           rule_desc: "allow SSH"
     register: security_group
 
+  - name: Search all EC2 instances with name {{ aws_instance_name }} and state running
+    amazon.aws.ec2_instance_info:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      aws_region: "{{ aws_region }}"
+      filters:
+        "tag:Name": "{{ aws_instance_name }}"
+        instance-state-name: [ "running"]
+    register: wg_ec2_info
+
   - name: Launch {{ aws_instance_name }} EC2 Instance
     amazon.aws.ec2_instance:
       name: "{{ aws_instance_name }}"
@@ -63,8 +97,36 @@
       network:
         assign_public_ip: true
       image_id: "{{ aws_image_id }}"
+    when:
+      - not wg_ec2_info.instances[0] is defined
     register: wg_instance
 
-  - name: Print {{ aws_instance_name }} EC2 instance details
+  - name: Search all EC2 instances with name {{ aws_instance_name }} and state running for writing hosts-aws
+    amazon.aws.ec2_instance_info:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      aws_region: "{{ aws_region }}"
+      filters:
+        "tag:Name": "{{ aws_instance_name }}"
+        instance-state-name: [ "running"]
+    register: wg_ec2_info
+
+  - name: Print instance information
     debug:
-      var: wg_instance
+      var: wg_ec2_info
+
+  - name: Write commodity hosts-aws file
+    copy:
+      dest: hosts-aws
+      content: |
+        [wireguard]
+        {{ aws_instance_name }} ansible_ssh_user=ec2-user ansible_ssh_host={{ wg_ec2_info.instances[0].public_ip_address }} ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+
+  - name: Add wireguard group-host
+    add_host:
+      name: "{{ aws_instance_name }}"
+      ansible_ssh_user: ec2-user
+      ansible_ssh_host: "{{ wg_ec2_info.instances[0].public_ip_address }}"
+      ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null '
+      groups:
+        - wireguard
