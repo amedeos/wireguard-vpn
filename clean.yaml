@@ -1,0 +1,107 @@
+- name: Remove all objects on AWS
+  hosts: localhost
+  collections:
+    - amazon.aws
+  vars_files:
+    - variables.yaml
+    - vault-variables.yaml
+  tasks:
+  - name: Terminate all EC2 instances with name {{ aws_instance_name }}
+    amazon.aws.ec2_instance:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      aws_region: "{{ aws_region }}"
+      state: absent
+      filters:
+        "tag:Name": "{{ aws_instance_name }}"
+    register: wg_ec2
+
+  - name: Delete {{ aws_sg_name }} Security Group
+    amazon.aws.ec2_security_group:
+      name: "{{ aws_sg_name }}"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ aws_region }}"
+      state: absent
+    register: security_group
+
+  - name: Search {{ aws_vpc_name }} VPC
+    amazon.aws.ec2_vpc_net_info:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ aws_region }}"
+      filters:
+        "tag:Name": "{{ aws_vpc_name }}"
+    register: vpc
+
+  - name: Delete route IGW
+    amazon.aws.ec2_vpc_route_table:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ aws_region }}"
+      vpc_id: "{{ item.vpc_id }}"
+      state: absent
+      tags:
+        Name: PublicWireguard
+    when: vpc.vpcs[0] is defined
+    with_items: "{{ vpc.vpcs }}"
+
+  - name: Search all route_table
+    amazon.aws.ec2_vpc_route_table_info:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ aws_region }}"
+      filters:
+        vpc-id: "{{ item.vpc_id }}"
+    register: route_table
+    when: vpc.vpcs[0] is defined
+    with_items: "{{ vpc.vpcs }}"
+
+  - name: Delete remaining route IGW
+    amazon.aws.ec2_vpc_route_table:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ aws_region }}"
+      vpc_id: "{{ vpc.vpcs[0].vpc_id }}"
+      route_table_id: "{{ item.route_tables[0].route_table_id }}"
+      state: absent
+    when:
+      - vpc.vpcs[0] is defined
+      - route_table.results[0].route_tables[0] is defined
+    with_items: "{{ route_table.results }}"
+
+  - name: Delete IGW
+    amazon.aws.ec2_vpc_igw:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ aws_region }}"
+      vpc_id: "{{ item.vpc_id }}"
+      state: absent
+    register: igw
+    when: vpc.vpcs[0] is defined
+    with_items: "{{ vpc.vpcs }}"
+
+  - name: Delete subnet
+    amazon.aws.ec2_vpc_subnet:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      cidr: "{{ aws_sub_cidr }}"
+      region: "{{ aws_region }}"
+      vpc_id: "{{ item.vpc_id }}"
+      state: absent
+      map_public: yes
+    register: subnet
+    when: vpc.vpcs[0] is defined
+    with_items: "{{ vpc.vpcs }}"
+
+  - name: Delete {{ aws_vpc_name }} VPC
+    amazon.aws.ec2_vpc_net:
+      vpc_id: "{{ item.vpc_id }}"
+      cidr_block: "{{ aws_cidr_block }}"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ aws_region }}"
+      state: absent
+    when: vpc.vpcs[0] is defined
+    with_items: "{{ vpc.vpcs }}"
+

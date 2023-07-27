@@ -43,7 +43,7 @@
       region: "{{ aws_region }}"
       vpc_id: "{{ vpc.vpc.id }}"
       tags:
-        Name: Public
+        Name: PublicWireguard
       subnets:
         - "{{ subnet.subnet.id }}"
       routes:
