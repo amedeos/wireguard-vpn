@@ -1,0 +1,70 @@
+- name: Deploy aws ec2 instance
+  hosts: localhost
+  collections:
+    - amazon.aws
+  vars_files:
+    - variables.yaml
+    - vault-variables.yaml
+  tasks:
+  - name: Create {{ aws_vpc_name }} VPC
+    amazon.aws.ec2_vpc_net:
+      name: "{{ aws_vpc_name }}"
+      cidr_block: "{{ aws_cidr_block }}"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ aws_region }}"
+      state: present
+    register: vpc
+
+  - name: Create Subnet
+    amazon.aws.ec2_vpc_subnet:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      cidr: "{{ aws_sub_cidr }}"
+      region: "{{ aws_region }}"
+      vpc_id: "{{ vpc.vpc.id }}"
+      state: present
+    register: subnet
+
+  - name: Create {{ aws_sg_name }} Security Group
+    amazon.aws.ec2_security_group:
+      name: "{{ aws_sg_name }}"
+      description: "Security group for wireguard"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      vpc_id: "{{ vpc.vpc.id }}"
+      region: "{{ aws_region }}"
+      rules:
+        - proto: udp
+          ports:
+            - 51820
+          cidr_ip: 0.0.0.0/0
+          rule_desc: "allow all on port 51820"
+        - proto: tcp
+          ports:
+            - 22
+          cidr_ip: 0.0.0.0/0
+          rule_desc: "allow SSH"
+    register: security_group
+
+  - name: Launch {{ aws_instance_name }} EC2 Instance
+    amazon.aws.ec2_instance:
+      name: "{{ aws_instance_name }}"
+      key_name: "{{ aws_key_name }}"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      vpc_subnet_id: "{{ subnet.subnet.id }}"
+      instance_type: "{{ aws_instance_type }}"
+      security_group: "{{ security_group.group_id  }}"
+      state: running
+      count: 1
+      wait: yes
+      aws_region: "{{ aws_region }}"
+      network:
+        assign_public_ip: true
+      image_id: "{{ aws_image_id }}"
+    register: wg_instance
+
+  - name: Print {{ aws_instance_name }} EC2 instance details
+    debug:
+      var: wg_instance

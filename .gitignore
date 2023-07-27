@@ -4,3 +4,4 @@ hosts-aws
 *.pem
 fetchedfiles/*
 routing.sh
+custom-variables.yaml
