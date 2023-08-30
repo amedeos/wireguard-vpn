@@ -1,7 +1,10 @@
 *.swp
 hosts
 hosts-aws
+hosts-exoscale
 *.pem
 fetchedfiles/*
 routing.sh
 custom-variables.yaml
+custom-variables*.yaml
+custom-variables*.yml
