@@ -2,6 +2,7 @@
 hosts
 hosts-aws
 hosts-exoscale
+hosts-wireguard
 *.pem
 fetchedfiles/*
 routing.sh
