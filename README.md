@@ -17,7 +17,7 @@ aws_region: eu-south-1
 aws_image_id: ami-0ef2a393a2f3af862 # Amazon Linux 2023 AMI 64-bit (x86)
 ```
 
-instead if don't use AWS, set **aws_provision** to false and create your own Ansible **hosts** file:
+instead if you don't use AWS, set **aws_provision** to false and create your own Ansible **hosts** file:
 ```shell
 $ touch custom-variables.yaml
 $ vi custom-variables.yaml
