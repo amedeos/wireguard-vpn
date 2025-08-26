@@ -180,24 +180,55 @@
       chain: INPUT
       jump: REJECT
 
-  - name: enable source forward
+  - name: enable source forward for wg0
     ansible.builtin.iptables:
       chain: FORWARD
-      source: "{{ wireguard_network }}"
+      in_interface: wg0
       jump: ACCEPT
 
-  - name: enable destination forward
+  - name: enable destination forward for wg0
     ansible.builtin.iptables:
       chain: FORWARD
-      destination: "{{ wireguard_network }}"
+      out_interface: wg0
       jump: ACCEPT
 
-  - name: enable MASQUERADING
+  - name: enable source forward for default interface
+    ansible.builtin.iptables:
+      chain: FORWARD
+      in_interface: "{{ ansible_default_ipv4.interface }}"
+      jump: ACCEPT
+
+  - name: enable destination forward for default interface
+    ansible.builtin.iptables:
+      chain: FORWARD
+      out_interface: "{{ ansible_default_ipv4.interface }}"
+      jump: ACCEPT
+
+#  - name: enable source forward
+#    ansible.builtin.iptables:
+#      chain: FORWARD
+#      source: "{{ wireguard_network }}"
+#      jump: ACCEPT
+#
+#  - name: enable destination forward
+#    ansible.builtin.iptables:
+#      chain: FORWARD
+#      destination: "{{ wireguard_network }}"
+#      jump: ACCEPT
+
+  - name: enable MASQUERADING on default interface
     ansible.builtin.iptables:
       table: nat
       chain: POSTROUTING
-      source: "{{ wireguard_network }}"
+      out_interface: "{{ ansible_default_ipv4.interface }}"
       jump: MASQUERADE
+
+#  - name: enable MASQUERADING
+#    ansible.builtin.iptables:
+#      table: nat
+#      chain: POSTROUTING
+#      source: "{{ wireguard_network }}"
+#      jump: MASQUERADE
 
   - name: Set the last rule as REJECT for FORWARD
     ansible.builtin.iptables:

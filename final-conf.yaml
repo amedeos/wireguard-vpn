@@ -1,0 +1,14 @@
+- name: Final configurations on localhost
+  hosts: localhost
+  vars_files:
+    - variables.yaml
+    - vault-variables.yaml
+  tasks:
+  - name: Change mode on wg0.conf
+    ansible.builtin.file:
+      path: "{{ fetch_dir }}/{{ item }}"
+      mode: '0600'
+    loop:
+      - "peerprivatekey"
+      - "wg0.conf"
+      - "privatekey"
