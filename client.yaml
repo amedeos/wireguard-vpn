@@ -25,4 +25,3 @@
       - "{{ peer_privatekey_path }}"
       - "{{ peer_publickey_path }}"
       - "/root/wg0.conf"
-

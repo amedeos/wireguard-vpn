@@ -11,3 +11,7 @@
 - import_playbook: client.yaml
   tags:
     - client
+
+- import_playbook: final-conf.yaml
+  tags:
+    - final_conf
