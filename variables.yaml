@@ -28,5 +28,5 @@ aws_cidr_block: 172.31.0.0/16
 aws_sub_cidr: 172.31.0.0/20
 aws_sg_name: wgsg
 aws_instance_name: swg01
-aws_image_id: ami-0ef2a393a2f3af862 # Amazon Linux 2023 AMI 64-bit (x86)
+aws_image_id: ami-0ec6fc99ae4b6fff3 # Amazon Linux 2023 AMI 64-bit (x86)
 aws_instance_type: t3.nano
