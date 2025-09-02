@@ -94,8 +94,10 @@
       count: 1
       wait: yes
       aws_region: "{{ aws_region }}"
-      network:
-        assign_public_ip: true
+      network_interfaces:
+        - subnet_id: "{{ subnet.subnet.id }}"
+          delete_on_termination: true
+          assign_public_ip: true
       image_id: "{{ aws_image_id }}"
     when:
       - not wg_ec2_info.instances[0] is defined
