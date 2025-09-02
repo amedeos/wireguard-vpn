@@ -67,3 +67,15 @@ Run wg-quick command:
 ```shell
 $ sudo wg-quick up wg0
 ```
+
+## Stop wireguard VPN
+Run wg-quick command:
+```shell
+$ sudo wg-quick down wg0
+```
+
+## Terminate instance on AWS and delete all
+In order to terminate instance on AWS and delete all objects run the following command:
+```shell
+$ ansible-playbook --extra-vars "@custom-variables.yaml" clean-aws.yaml
+```
