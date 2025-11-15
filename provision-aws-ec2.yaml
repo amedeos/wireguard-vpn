@@ -128,3 +128,11 @@
       ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null '
       groups:
         - wireguard
+
+  - name: Wait for SSH to be ready on EC2 instance
+    ansible.builtin.wait_for:
+      host: "{{ wg_ec2_info.instances[0].public_ip_address }}"
+      port: 22
+      delay: 10
+      timeout: 300
+      state: started
