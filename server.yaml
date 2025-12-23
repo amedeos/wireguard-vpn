@@ -111,7 +111,7 @@
     ansible.builtin.iptables:
       chain: "{{ item }}"
       flush: yes
-    with_items:
+    loop:
       - 'INPUT'
       - 'FORWARD'
       - 'OUTPUT'
@@ -121,7 +121,7 @@
       table: nat
       chain: '{{ item }}'
       flush: yes
-    with_items:
+    loop:
       - 'INPUT'
       - 'OUTPUT'
       - 'PREROUTING'
@@ -132,7 +132,7 @@
       table: mangle
       chain: '{{ item }}'
       flush: yes
-    with_items:
+    loop:
       - 'INPUT'
       - 'OUTPUT'
       - 'PREROUTING'
