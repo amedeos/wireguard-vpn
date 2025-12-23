@@ -44,7 +44,7 @@
       tags:
         Name: PublicWireguard
     when: vpc.vpcs[0] is defined
-    with_items: "{{ vpc.vpcs }}"
+    loop: "{{ vpc.vpcs }}"
 
   - name: Search all route_table
     amazon.aws.ec2_vpc_route_table_info:
@@ -55,7 +55,7 @@
         vpc-id: "{{ item.vpc_id }}"
     register: route_table
     when: vpc.vpcs[0] is defined
-    with_items: "{{ vpc.vpcs }}"
+    loop: "{{ vpc.vpcs }}"
 
   - name: Delete remaining route IGW
     amazon.aws.ec2_vpc_route_table:
@@ -68,7 +68,7 @@
     when:
       - vpc.vpcs[0] is defined
       - route_table.results[0].route_tables[0] is defined
-    with_items: "{{ route_table.results }}"
+    loop: "{{ route_table.results }}"
 
   - name: Delete IGW
     amazon.aws.ec2_vpc_igw:
@@ -79,7 +79,7 @@
       state: absent
     register: igw
     when: vpc.vpcs[0] is defined
-    with_items: "{{ vpc.vpcs }}"
+    loop: "{{ vpc.vpcs }}"
 
   - name: Delete subnet
     amazon.aws.ec2_vpc_subnet:
@@ -92,7 +92,7 @@
       map_public: yes
     register: subnet
     when: vpc.vpcs[0] is defined
-    with_items: "{{ vpc.vpcs }}"
+    loop: "{{ vpc.vpcs }}"
 
   - name: Delete {{ aws_vpc_name }} VPC
     amazon.aws.ec2_vpc_net:
@@ -103,5 +103,5 @@
       region: "{{ aws_region }}"
       state: absent
     when: vpc.vpcs[0] is defined
-    with_items: "{{ vpc.vpcs }}"
+    loop: "{{ vpc.vpcs }}"
 
