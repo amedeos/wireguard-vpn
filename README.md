@@ -14,8 +14,12 @@ aws_access_key: <your aws access key>
 aws_secret_key: <your aws secret key>
 aws_key_name: <your aws key name>
 aws_region: eu-south-1
-aws_image_id: ami-0ef2a393a2f3af862 # Amazon Linux 2023 AMI 64-bit (x86)
+# aws_image_id is automatically searched if not specified (Amazon Linux 2023 AMI 64-bit x86)
+# If you want to force a specific AMI, uncomment and set the value:
+#aws_image_id: ami-0ef2a393a2f3af862 # Amazon Linux 2023 AMI 64-bit (x86)
 ```
+
+**Note:** The playbook automatically searches for the latest **Amazon Linux 2023 AMI 64-bit (x86)** if `aws_image_id` is not specified. The AMI ID is retrieved dynamically from AWS, ensuring you always use the most recent available image. If you need to use a specific AMI version, you can uncomment and set the `aws_image_id` variable.
 
 instead if you don't use AWS, set **aws_provision** to false and create your own Ansible **hosts** file:
 ```shell

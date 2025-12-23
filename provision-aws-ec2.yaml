@@ -81,6 +81,30 @@
         instance-state-name: [ "running"]
     register: wg_ec2_info
 
+  - name: Get latest Amazon Linux 2023 AMI 64-bit (x86)
+    amazon.aws.ec2_ami_info:
+      owners:
+        - amazon
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ aws_region }}"
+      filters:
+        name: "al2023-ami-*-x86_64"
+        architecture: x86_64
+        state: available
+        virtualization-type: hvm
+    register: amazon_linux_2023_amis
+    when: aws_image_id is not defined or aws_image_id == ""
+
+  - name: Set aws_image_id to latest Amazon Linux 2023 AMI
+    ansible.builtin.set_fact:
+      aws_image_id: "{{ (amazon_linux_2023_amis.images | sort(attribute='creation_date', reverse=true) | first).image_id }}"
+    when: aws_image_id is not defined or aws_image_id == ""
+
+  - name: Display selected AMI ID
+    ansible.builtin.debug:
+      msg: "Using AMI ID: {{ aws_image_id }}"
+
   - name: Launch {{ aws_instance_name }} EC2 Instance
     amazon.aws.ec2_instance:
       name: "{{ aws_instance_name }}"
@@ -114,14 +138,14 @@
     register: wg_ec2_info
 
   - name: Write commodity hosts-aws file
-    copy:
+    ansible.builtin.copy:
       dest: hosts-aws
       content: |
         [wireguard]
         {{ aws_instance_name }} ansible_ssh_user=ec2-user ansible_ssh_host={{ wg_ec2_info.instances[0].public_ip_address }} ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
 
   - name: Add wireguard group-host
-    add_host:
+    ansible.builtin.add_host:
       name: "{{ aws_instance_name }}"
       ansible_ssh_user: ec2-user
       ansible_ssh_host: "{{ wg_ec2_info.instances[0].public_ip_address }}"
